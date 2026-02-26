@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.nore.chatroom.dao.userDAO">
+
+    <!-- 获取所有用户 -->
+    <select id="getUsers" resultType="com.nore.chatroom.userDTO.userDTO">
+        select ID, Username, Phone ,Password, Avatar
+        from chatroom.user
+        order by ID
+    </select>
+
+    <!-- 搜索用户 -->
+    <select id="searchUsers" resultType="com.nore.chatroom.userDTO.userDTO">
+        select ID, Username, Password, Avatar, Phone
+        from chatroom.user
+        <where>
+            <if test="ID != null and ID > 0">
+                and ID = #{ID}
+            </if>
+            <if test="Username != null and Username != ''">
+                and Username like CONCAT('%', #{Username}, '%')
+            </if>
+            <if test="Password != null and Password != ''">
+                and Password like CONCAT('%', #{Password}, '%')
+            </if>
+            <if test="Avatar != null and Avatar != ''">
+                and Avatar like CONCAT('%', #{Avatar}, '%')
+            </if>
+            <if test="Phone != null and Phone != ''">
+                and Phone like CONCAT('%', #{Phone}, '%')
+            </if>
+        </where>
+        order by ID
+    </select>
+
+    <!-- 删除用户 -->
+    <delete id="deleteUser" parameterType="com.nore.chatroom.userDTO.userDTO">
+        delete from chatroom.user
+        where ID = #{ID}
+    </delete>
+
+    <!-- 新增用户 -->
+    <insert id="insertUser" parameterType="com.nore.chatroom.userDTO.userDTO">
+        insert into chatroom.user
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="Username != null and Username != ''">
+                Username,
+            </if>
+            <if test="Password != null and Password != ''">
+                Password,
+            </if>
+            <if test="Phone != null and Phone != ''">
+                Phone,
+            </if>
+            <if test="Avatar != null and Avatar != ''">
+                Avatar,
+            </if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="Username != null and Username != ''">
+                #{Username},
+            </if>
+            <if test="Password != null and Password != ''">
+                #{Password},
+            </if>
+            <if test="Phone != null and Phone != ''">
+                #{Phone},
+            </if>
+            <if test="Avatar != null and Avatar != ''">
+                #{Avatar},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 编辑用户 -->
+    <update id="editUser" parameterType="com.nore.chatroom.userDTO.userDTO">
+        update chatroom.user
+        <set>
+            <if test="Username != null and Username != ''">
+                Username = #{Username},
+            </if>
+            <if test="Password != null and Password != ''">
+                Password = #{Password},
+            </if>
+            <if test="Avatar != null and Avatar != ''">
+                Avatar = #{Avatar},
+            </if>
+            <if test="Phone != null and Phone != ''">
+                Phone = #{Phone},
+            </if>
+        </set>
+        where ID = #{ID}
+    </update>
+
+    <!-- 用户登录 -->
+    <select id="loginUser" resultType="com.nore.chatroom.userDTO.userDTO">
+        select ID, Username, Avatar, Phone, Password
+        from chatroom.user
+        where Phone = #{Phone}
+    </select>
+
+    <!-- 根据ID获取用户 -->
+    <select id="getUserById" resultType="com.nore.chatroom.userDTO.userDTO">
+        select ID, Username, Avatar, Phone
+        from chatroom.user
+        where ID = #{ID}
+    </select>
+</mapper>

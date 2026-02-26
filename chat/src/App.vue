@@ -1,10 +1,18 @@
-<script setup>
-import ChatRoom from './components/ChatRoom.vue'
-</script>
-
 <template>
-  <ChatRoom />
+  <div id="app">
+    <router-view v-slot="{ Component }">
+      <transition name="fade" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
+  </div>
 </template>
+
+<script>
+export default {
+  name: 'App'
+}
+</script>
 
 <style>
 * {
@@ -14,6 +22,14 @@ import ChatRoom from './components/ChatRoom.vue'
 }
 
 body {
-  font-family: Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #36393f;
+  color: #ffffff;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
 }
 </style>
+
