@@ -302,7 +302,7 @@
               <el-tooltip content="上传文件">
                 <el-upload
                     class="upload-btn"
-                    action="http://localhost:8081/api/files/upload"
+                    :action="`${API_BASE_URL}/api/files/upload`"
                     :on-success="handleFileUpload"
                     :show-file-list="false"
                     accept="*"
@@ -525,6 +525,7 @@
 </template>
 
 <script>
+import { API_BASE_URL, WS_BASE_URL } from '../config.js'
 import {
   ChatDotRound,
   ChatLineRound,
@@ -789,7 +790,7 @@ export default {
 
     // ---------- WebSocket ----------
     initWebSocket() {
-      const wsUrl = 'ws://localhost:8081/ws/chat'
+      const wsUrl = `${WS_BASE_URL}/ws/chat`
       this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = () => {
@@ -976,7 +977,7 @@ export default {
       this.$refs.createChannelFormRef.validate(async (valid) => {
         if (!valid) return
         try {
-          const response = await fetch('http://localhost:8081/api/channels/create', {
+          const response = await fetch(`${API_BASE_URL}/api/channels/create`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1014,7 +1015,7 @@ export default {
     async updateChannel() {
       if (!this.editingChannelId) return
       try {
-        const response = await fetch(`http://localhost:8081/api/channels/${this.editingChannelId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/channels/${this.editingChannelId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1050,7 +1051,7 @@ export default {
         type: 'warning'
       }).then(async () => {
         try {
-          const response = await fetch(`http://localhost:8081/api/channels/${channel.id}`, {
+          const response = await fetch(`${API_BASE_URL}/api/channels/${channel.id}`, {
             method: 'DELETE'
           })
 
@@ -1073,7 +1074,7 @@ export default {
 
     async loadChannels() {
       try {
-        const response = await fetch('http://localhost:8081/api/channels/all')
+        const response = await fetch(`${API_BASE_URL}/api/channels/all`)
         if (!response.ok) return
         const result = await response.json()
         if (result.code !== 200) return
@@ -1189,7 +1190,7 @@ export default {
         const channelId = this.getCurrentChannelId()
         if (channelId === null) return
 
-        const apiUrl = `http://localhost:8081/api/messages/channel/${channelId}`
+        const apiUrl = `${API_BASE_URL}/api/messages/channel/${channelId}`
         const response = await fetch(apiUrl)
         if (!response.ok) return
 
@@ -1216,7 +1217,7 @@ export default {
     async loadPrivateChatHistory() {
       if (!this.privateChatUser) return
       try {
-        const apiUrl = `http://localhost:8081/api/messages/private/${this.user.ID}/${this.privateChatUser.ID}`
+        const apiUrl = `${API_BASE_URL}/api/messages/private/${this.user.ID}/${this.privateChatUser.ID}`
         const response = await fetch(apiUrl)
         if (!response.ok) return
 
