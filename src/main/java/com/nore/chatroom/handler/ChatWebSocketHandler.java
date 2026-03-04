@@ -37,7 +37,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
-        System.out.println("收到消息: " + payload);
+        System.out.println("收到消息： " + payload);
 
         Map messageData = gson.fromJson(payload, Map.class);
         String type = (String) messageData.get("type");
@@ -46,6 +46,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             handleLogin(session, messageData);
         } else if ("chat".equals(type)) {
             handleChat(messageData);
+        } else if ("private".equals(type) || "privateFile".equals(type)) {
+            handlePrivateMessage(messageData);
+        } else if ("updateUsername".equals(type)) {
+            handleUpdateUsername(messageData);
+        } else if ("enterPrivateChat".equals(type)) {
+            handleEnterPrivateChat(session, messageData);
+        } else if ("exitPrivateChat".equals(type)) {
+            handleExitPrivateChat(session);
         }
     }
 
@@ -90,12 +98,102 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         // Save message to database
         saveMessageToDatabase(messageData);
         
-        // Broadcast message to all connected users with channel filtering
+        // Get the sender's session to exclude from broadcast
+        Object senderIdObj = messageData.get("senderId");
+        Integer senderId = parseInteger(senderIdObj);
+        String senderSessionId = senderId != null ? senderId.toString() : null;
+        WebSocketSession senderSession = senderSessionId != null ? userSessionMap.get(senderSessionId) : null;
+        
+        // Broadcast message to all connected users except sender
+        // Only send to users who are not in private chat
         for (WebSocketSession webSocketSession : sessionUserMap.keySet()) {
-            if (webSocketSession.isOpen()) {
-                webSocketSession.sendMessage(new TextMessage(gson.toJson(messageData)));
+            if (webSocketSession.isOpen() && webSocketSession != senderSession) {
+                // Check if the user is in private chat by checking session attributes
+                // Users in private chat should not receive channel messages
+                String sessionId = sessionUserMap.get(webSocketSession);
+                String privateChatSessionId = (String) webSocketSession.getAttributes().get("privateChatWith");
+                
+                // Only send to users who are not in private chat
+                if (privateChatSessionId == null) {
+                    webSocketSession.sendMessage(new TextMessage(gson.toJson(messageData)));
+                }
             }
         }
+    }
+    
+    private void handlePrivateMessage(Map messageData) throws Exception {
+        // Save message to database
+        saveMessageToDatabase(messageData);
+        
+        // Send to sender
+        Object senderIdObj = messageData.get("senderId");
+        Integer senderId = parseInteger(senderIdObj);
+        String senderSessionId = senderId != null ? senderId.toString() : null;
+        WebSocketSession senderSession = senderSessionId != null ? userSessionMap.get(senderSessionId) : null;
+        if (senderSession != null && senderSession.isOpen()) {
+            senderSession.sendMessage(new TextMessage(gson.toJson(messageData)));
+        }
+        
+        // Send to target user
+        Object targetUserIdObj = messageData.get("targetUserId");
+        Integer targetUserId = parseInteger(targetUserIdObj);
+        String targetSessionId = targetUserId != null ? targetUserId.toString() : null;
+        WebSocketSession targetSession = targetSessionId != null ? userSessionMap.get(targetSessionId) : null;
+        if (targetSession != null && targetSession.isOpen() && targetSession != senderSession) {
+            targetSession.sendMessage(new TextMessage(gson.toJson(messageData)));
+        }
+    }
+    
+    private void handleUpdateUsername(Map messageData) throws Exception {
+        Integer userId = parseInteger(messageData.get("userId"));
+        String newUsername = (String) messageData.get("newUsername");
+        
+        if (userId == null || newUsername == null) {
+            System.err.println("Invalid updateUsername message");
+            return;
+        }
+        
+        // Update user in database
+        userDTO user = userService.getUserById(userId);
+        if (user != null) {
+            user.setUsername(newUsername);
+            userService.editUser(user);
+            
+            // Update user session
+            String sessionId = userId.toString();
+            if (userSessionMap.containsKey(sessionId)) {
+                WebSocketSession session = userSessionMap.get(sessionId);
+                sessionUserMap.put(session, sessionId);
+                userSessionMap.put(sessionId, session);
+            }
+            
+            // Broadcast updated user list to all clients
+            sendUserListToAll();
+            
+            // Send username update notification to all connected users
+            Map notification = new HashMap();
+            notification.put("type", "usernameUpdated");
+            notification.put("userId", userId);
+            notification.put("oldUsername", messageData.get("oldUsername"));
+            notification.put("newUsername", newUsername);
+            
+            for (WebSocketSession webSocketSession : sessionUserMap.keySet()) {
+                if (webSocketSession.isOpen()) {
+                    webSocketSession.sendMessage(new TextMessage(gson.toJson(notification)));
+                }
+            }
+        }
+    }
+    
+    private void handleEnterPrivateChat(WebSocketSession session, Map messageData) {
+        Integer targetUserId = parseInteger(messageData.get("targetUserId"));
+        if (targetUserId != null) {
+            session.getAttributes().put("privateChatWith", targetUserId.toString());
+        }
+    }
+    
+    private void handleExitPrivateChat(WebSocketSession session) {
+        session.getAttributes().remove("privateChatWith");
     }
     
     private void saveMessageToDatabase(Map messageData) {

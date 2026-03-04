@@ -838,6 +838,16 @@ export default {
               avatar: this.getAvatar(user.ID)
             }))
             break
+            
+          case 'usernameUpdated': {
+            // Update user list with new username
+            this.onlineUsers = this.onlineUsers.map(user => 
+              user.ID === message.userId 
+                ? { ...user, Username: message.newUsername } 
+                : user
+            )
+            break
+          }
 
           default:
             console.log('未知消息类型:', message.type)
@@ -922,6 +932,13 @@ export default {
 
     // ---------- 切换频道 / 私聊 ----------
     switchChannel(channelName) {
+      // Notify backend that user is exiting private chat
+      if (this.privateChatUser && this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          type: 'exitPrivateChat'
+        }))
+      }
+      
       this.currentChannel = channelName
       this.privateChatUser = null
 
@@ -944,6 +961,14 @@ export default {
       this.currentChannel = 'private'
       this.messages = []
       this.loadPrivateChatHistory()
+      
+      // Notify backend that user is in private chat
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          type: 'enterPrivateChat',
+          targetUserId: onlineUser.ID
+        }))
+      }
     },
 
     getSenderName(message) {
@@ -1103,8 +1128,24 @@ export default {
       this.$refs.userProfileFormRef.validate(async (valid) => {
         if (!valid) return
         try {
+          // 1. 更新本地状态
+          const oldUsername = this.user.Username
           this.user.Username = this.userProfileForm.username
+          
+          // 2. 更新 WebSocket 连接中的用户信息
+          if (this.ws?.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ 
+              type: 'updateUsername',
+              userId: this.user.ID,
+              oldUsername: oldUsername,
+              newUsername: this.userProfileForm.username
+            }))
+          }
+          
+          // 3. 保存到 localStorage
           localStorage.setItem('user', JSON.stringify(this.user))
+          
+          // 4. 关闭对话框
           this.userProfileDialogVisible = false
           this.$message.success('个人信息更新成功')
         } catch (error) {
