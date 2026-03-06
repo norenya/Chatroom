@@ -1,5 +1,6 @@
 package com.nore.chatroom.dao;
 import com.nore.chatroom.userDTO.userDTO;
+import com.nore.chatroom.userDTO.MessageDTO;
 
 import java.util.List;
 public interface userDAO {
@@ -14,5 +15,6 @@ public interface userDAO {
     Integer editUser(userDTO userDTO); // 编辑用户
 
     userDTO getUserById(Integer ID); // 根据ID获取用户
-
+    
+    List<MessageDTO> getRecentChatMessages(int userId, int limit); // 获取用户最近的聊天记录
 }

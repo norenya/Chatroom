@@ -2,6 +2,7 @@ package com.nore.chatroom.controller;
 
 import com.nore.chatroom.userDTO.ResultVO;
 import com.nore.chatroom.userDTO.userDTO;
+import com.nore.chatroom.userDTO.MessageDTO;
 import com.nore.chatroom.service.UserService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
@@ -91,5 +92,15 @@ public class UserController {
     @PostMapping("/user/searchUsers")
     public ResultVO<List<userDTO>> searchUsers(@RequestBody userDTO userDTO) {
         return ResultVO.success(userService.searchUsers(userDTO));
+    }
+    
+    @GetMapping("/user/recentMessages")
+    public ResultVO<List<MessageDTO>> getRecentMessages(@RequestParam int userId, @RequestParam(defaultValue = "20") int limit) {
+        try {
+            List<MessageDTO> messages = userService.getRecentChatMessages(userId, limit);
+            return ResultVO.success(messages);
+        } catch (Exception e) {
+            return ResultVO.error("获取聊天记录失败: " + e.getMessage());
+        }
     }
 }

@@ -127,6 +127,34 @@
               </div>
             </el-scrollbar>
           </div>
+
+          <!-- 所有用户区域 -->
+          <div class="section">
+            <div class="section-header">
+              <el-text type="info" size="small" class="section-title">所有用户</el-text>
+              <el-badge :value="allUsers.length" type="primary" class="user-count" />
+            </div>
+
+            <el-scrollbar class="user-list" max-height="300px">
+              <div
+                  v-for="otherUser in allUsers"
+                  :key="otherUser.ID"
+                  class="user-item"
+                  @click="openPrivateChat(otherUser)"
+              >
+                <el-avatar :size="32" :src="otherUser.avatar">
+                  {{ otherUser.Username.charAt(0).toUpperCase() }}
+                </el-avatar>
+                <div class="user-info-text">
+                  <el-text truncated class="user-name">{{ otherUser.Username }}</el-text>
+                  <el-text type="info" size="small" class="user-last-message">
+                    {{ getLastMessageText(otherUser.ID) }}
+                  </el-text>
+                </div>
+                <el-icon class="chat-icon"><ChatLineSquare /></el-icon>
+              </div>
+            </el-scrollbar>
+          </div>
         </div>
 
         <!-- 底部用户信息 -->
@@ -607,6 +635,8 @@ export default {
       privateChatUser: null,
       onlineUsers: [],
       channels: [],
+      allUsers: [], // 所有用户列表
+      userChatHistory: {}, // 用户聊天记录
 
       createChannelDialogVisible: false,
       userProfileDialogVisible: false,
@@ -760,6 +790,51 @@ export default {
     },
 
     // ---------- 基础 ----------
+    async loadAllUsers() {
+      if (!this.user) {
+        console.warn('用户信息未加载，跳过加载所有用户')
+        return
+      }
+      try {
+        const response = await fetch(`${API_BASE_URL}/user/getusers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        })
+        const result = await response.json()
+        if (result.code === 200) {
+          this.allUsers = result.data.filter(u => u.ID !== this.user.ID)
+          // 加载每个用户的聊天记录
+          for (const user of this.allUsers) {
+            await this.loadUserChatHistory(user.ID)
+          }
+        }
+      } catch (error) {
+        console.error('获取所有用户失败:', error)
+      }
+    },
+
+    async loadUserChatHistory(userId) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/user/recentMessages?userId=${userId}&limit=20`)
+        const result = await response.json()
+        if (result.code === 200) {
+          this.userChatHistory[userId] = result.data || []
+        }
+      } catch (error) {
+        console.error(`获取用户 ${userId} 聊天记录失败:`, error)
+      }
+    },
+
+    getLastMessageText(userId) {
+      const history = this.userChatHistory[userId] || []
+      if (history.length === 0) return '暂无消息'
+      const lastMessage = history[0]
+      if (lastMessage.fileUrl) return '[文件]'
+      if (lastMessage.content) return lastMessage.content
+      return '暂无消息'
+    },
+
     initUserProfileForm() {
       if (!this.user) return
       this.userProfileForm = {
@@ -796,6 +871,8 @@ export default {
       this.ws.onopen = () => {
         console.log('WebSocket连接成功')
         this.sendLoginMessage()
+        // WebSocket 连接成功后加载所有用户
+        this.loadAllUsers()
       }
 
       this.ws.onmessage = (event) => {
@@ -837,6 +914,13 @@ export default {
               ...user,
               avatar: this.getAvatar(user.ID)
             }))
+            // 同时更新所有用户列表（排除当前用户）
+            if (this.user) {
+              this.allUsers = this.allUsers.map(u => {
+                const onlineUser = this.onlineUsers.find(ou => ou.ID === u.ID)
+                return onlineUser ? { ...u, ...onlineUser } : u
+              })
+            }
             break
             
           case 'usernameUpdated': {

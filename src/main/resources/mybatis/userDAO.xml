@@ -105,4 +105,25 @@
         from chatroom.user
         where ID = #{ID}
     </select>
+    
+    <!-- 获取用户最近的聊天记录 -->
+    <select id="getRecentChatMessages" resultType="com.nore.chatroom.userDTO.MessageDTO">
+        SELECT 
+            m.id,
+            m.sender_id as senderId,
+            m.sender_name as senderName,
+            m.content,
+            m.message_type as messageType,
+            m.target_user_id as targetUserId,
+            m.file_name as fileName,
+            m.file_url as fileUrl,
+            m.channel_id as channelId,
+            m.create_time as createTime,
+            u.Username as senderUsername
+        FROM chat_messages m
+        LEFT JOIN chatroom.user u ON m.sender_id = u.ID
+        WHERE m.sender_id = #{userId} OR m.target_user_id = #{userId}
+        ORDER BY m.create_time DESC
+        LIMIT #{limit}
+    </select>
 </mapper>

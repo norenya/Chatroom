@@ -3,6 +3,7 @@ package com.nore.chatroom.service;
 import com.nore.chatroom.dao.userDAO;
 import com.nore.chatroom.userDTO.ResultVO;
 import com.nore.chatroom.userDTO.userDTO;
+import com.nore.chatroom.userDTO.MessageDTO;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.constructor.DuplicateKeyException;
@@ -67,5 +68,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public userDTO getUserById(Integer ID) {
         return userDAO.getUserById(ID);
+    }
+    
+    @Override
+    public List<MessageDTO> getRecentChatMessages(int userId, int limit) {
+        return userDAO.getRecentChatMessages(userId, limit);
     }
 }
